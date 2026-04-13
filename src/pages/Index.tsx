@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Shield, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import AuthGate from '@/components/AuthGate';
@@ -9,41 +9,56 @@ import DeviceAttestation from '@/components/DeviceAttestation';
 import DigitalNotary from '@/components/DigitalNotary';
 import CaseManager from '@/components/CaseManager';
 import StatusBar from '@/components/StatusBar';
-import type { EvidenceRecord, CaseRecord } from '@/types/evidence';
-import { generateCaseId } from '@/utils/crypto';
+import { useAuth } from '@/contexts/AuthContext';
+import { fetchCases, createCase, fetchEvidence } from '@/services/database';
+import type { Database } from '@/integrations/supabase/types';
 
-const defaultCase: CaseRecord = {
-  id: generateCaseId(),
-  name: 'Initial Investigation',
-  createdAt: new Date().toISOString(),
-  status: 'active',
-  evidenceCount: 0,
-  assignedTo: 'Current User',
-  accessExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-};
+type CaseRow = Database['public']['Tables']['cases']['Row'];
+type EvidenceRow = Database['public']['Tables']['evidence_records']['Row'];
 
 const Index = () => {
-  const [authenticated, setAuthenticated] = useState(false);
-  const [evidence, setEvidence] = useState<EvidenceRecord[]>([]);
-  const [cases, setCases] = useState<CaseRecord[]>([defaultCase]);
-  const [activeCaseId, setActiveCaseId] = useState(defaultCase.id);
-  const [selectedEvidence, setSelectedEvidence] = useState<EvidenceRecord | null>(null);
+  const { user, loading, signOut } = useAuth();
+  const [cases, setCases] = useState<CaseRow[]>([]);
+  const [activeCaseId, setActiveCaseId] = useState<string | null>(null);
+  const [evidence, setEvidence] = useState<EvidenceRow[]>([]);
+  const [selectedEvidence, setSelectedEvidence] = useState<EvidenceRow | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  const handleCapture = (record: EvidenceRecord) => {
-    setEvidence(prev => [record, ...prev]);
-    setCases(prev =>
-      prev.map(c => c.id === activeCaseId ? { ...c, evidenceCount: c.evidenceCount + 1 } : c)
-    );
-  };
+  const refresh = useCallback(async () => {
+    if (!user) return;
+    const c = await fetchCases(user.id);
+    setCases(c);
+    if (c.length > 0 && !activeCaseId) setActiveCaseId(c[0].id);
+  }, [user, activeCaseId]);
 
-  const handleCreateCase = (c: CaseRecord) => {
+  useEffect(() => { refresh(); }, [refresh]);
+
+  useEffect(() => {
+    if (!user || !activeCaseId) return;
+    fetchEvidence(user.id, activeCaseId).then(setEvidence);
+  }, [user, activeCaseId, refreshKey]);
+
+  const handleCreateCase = async (name: string) => {
+    if (!user) return;
+    const c = await createCase(user.id, name);
     setCases(prev => [c, ...prev]);
     setActiveCaseId(c.id);
   };
 
-  if (!authenticated) {
-    return <AuthGate onAuthenticated={() => setAuthenticated(true)} />;
+  const handleCaptured = () => {
+    setRefreshKey(k => k + 1);
+    refresh();
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Shield className="w-8 h-8 text-primary animate-pulse" />
+      </div>
+    );
   }
+
+  if (!user) return <AuthGate />;
 
   if (selectedEvidence) {
     return (
@@ -53,9 +68,10 @@ const Index = () => {
     );
   }
 
+  const activeCase = cases.find(c => c.id === activeCaseId);
+
   return (
     <div className="min-h-screen">
-      {/* Header */}
       <header className="border-b border-border glass-panel sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 md:px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -63,41 +79,44 @@ const Index = () => {
             <span className="font-bold text-foreground text-lg">VeriCapture</span>
             <span className="text-xs text-muted-foreground hidden sm:inline ml-2">Zero-Trust Evidence System</span>
           </div>
-          <Button variant="ghost" size="sm" onClick={() => setAuthenticated(false)}>
-            <LogOut className="w-4 h-4 mr-1" /> Logout
-          </Button>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground hidden sm:inline">{user.email}</span>
+            <Button variant="ghost" size="sm" onClick={signOut}>
+              <LogOut className="w-4 h-4 mr-1" /> Logout
+            </Button>
+          </div>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-4 md:px-6 py-6 space-y-6">
-        {/* Status Overview */}
-        <StatusBar
-          evidenceCount={evidence.length}
-          caseCount={cases.length}
-          deviceScore={83}
-        />
+        <StatusBar evidenceCount={evidence.length} caseCount={cases.length} deviceScore={83} />
 
-        {/* Main Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left: Capture + Evidence List */}
           <div className="lg:col-span-2 space-y-6">
-            <CaptureInterface activeCaseId={activeCaseId} onCapture={handleCapture} />
-            <EvidenceList
-              records={evidence.filter(e => e.caseId === activeCaseId)}
-              onSelect={setSelectedEvidence}
-            />
+            {activeCase ? (
+              <CaptureInterface
+                activeCaseId={activeCase.id}
+                activeCaseCode={activeCase.case_code}
+                currentEvidenceCount={activeCase.evidence_count}
+                onCaptured={handleCaptured}
+              />
+            ) : (
+              <div className="glass-panel rounded-xl p-6 text-center text-muted-foreground text-sm">
+                Create a case to start capturing evidence.
+              </div>
+            )}
+            <EvidenceList records={evidence} onSelect={setSelectedEvidence} />
           </div>
 
-          {/* Right Sidebar */}
           <div className="space-y-6">
             <CaseManager
               cases={cases}
-              activeCaseId={activeCaseId}
+              activeCaseId={activeCaseId || ''}
               onSelectCase={setActiveCaseId}
               onCreateCase={handleCreateCase}
             />
             <DeviceAttestation />
-            <DigitalNotary />
+            <DigitalNotary refreshKey={refreshKey} />
           </div>
         </div>
       </main>

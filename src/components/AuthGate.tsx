@@ -1,47 +1,36 @@
 import { useState } from 'react';
-import { Shield, Lock, Eye, EyeOff, Fingerprint } from 'lucide-react';
+import { Shield, Lock, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-
-interface AuthGateProps {
-  onAuthenticated: () => void;
-}
+import { useAuth } from '@/contexts/AuthContext';
 
 /**
- * Multi-Factor Authentication gate component.
- * Simulates email/password + TOTP verification.
+ * Authentication gate using Supabase Auth.
+ * Supports sign up and sign in with email/password.
  */
-const AuthGate = ({ onAuthenticated }: AuthGateProps) => {
-  const [step, setStep] = useState<'credentials' | 'mfa'>('credentials');
+const AuthGate = () => {
+  const { signIn, signUp } = useAuth();
+  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [mfaCode, setMfaCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
 
-  const handleCredentials = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
-    await new Promise(r => setTimeout(r, 800));
-    if (email && password.length >= 6) {
-      setStep('mfa');
-    } else {
-      setError('Invalid credentials. Password must be at least 6 characters.');
-    }
-    setLoading(false);
-  };
+    setMessage('');
 
-  const handleMFA = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-    await new Promise(r => setTimeout(r, 600));
-    if (mfaCode.length === 6) {
-      onAuthenticated();
+    if (mode === 'signup') {
+      const { error } = await signUp(email, password);
+      if (error) setError(error.message);
+      else setMessage('Check your email to confirm your account.');
     } else {
-      setError('Invalid MFA code. Enter a 6-digit code.');
+      const { error } = await signIn(email, password);
+      if (error) setError(error.message);
     }
     setLoading(false);
   };
@@ -49,7 +38,6 @@ const AuthGate = ({ onAuthenticated }: AuthGateProps) => {
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-md animate-fade-in-up">
-        {/* Logo & Title */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 glow-blue mb-4">
             <Shield className="w-8 h-8 text-primary" />
@@ -59,85 +47,61 @@ const AuthGate = ({ onAuthenticated }: AuthGateProps) => {
         </div>
 
         <div className="glass-panel rounded-xl p-6">
-          {step === 'credentials' ? (
-            <form onSubmit={handleCredentials} className="space-y-4">
-              <div className="flex items-center gap-2 mb-4">
-                <Lock className="w-4 h-4 text-primary" />
-                <span className="text-sm font-medium text-foreground">Step 1: Identity Verification</span>
-              </div>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="flex items-center gap-2 mb-4">
+              <Lock className="w-4 h-4 text-primary" />
+              <span className="text-sm font-medium text-foreground">
+                {mode === 'signin' ? 'Sign In' : 'Create Account'}
+              </span>
+            </div>
 
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Email Address</label>
-                <Input
-                  type="email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  placeholder="agent@veridept.gov"
-                  className="bg-muted/50 border-border"
-                  required
-                />
-              </div>
-
-              <div className="relative">
-                <label className="text-xs text-muted-foreground mb-1 block">Password</label>
-                <Input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="bg-muted/50 border-border pr-10"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-[calc(50%+4px)] text-muted-foreground hover:text-foreground"
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-
-              {error && <p className="text-destructive text-xs">{error}</p>}
-
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? 'Authenticating...' : 'Continue to MFA'}
-              </Button>
-            </form>
-          ) : (
-            <form onSubmit={handleMFA} className="space-y-4">
-              <div className="flex items-center gap-2 mb-4">
-                <Fingerprint className="w-4 h-4 text-primary" />
-                <span className="text-sm font-medium text-foreground">Step 2: Multi-Factor Verification</span>
-              </div>
-
-              <p className="text-xs text-muted-foreground">
-                Enter the 6-digit code from your authenticator app.
-              </p>
-
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Email Address</label>
               <Input
-                type="text"
-                maxLength={6}
-                value={mfaCode}
-                onChange={e => setMfaCode(e.target.value.replace(/\D/g, ''))}
-                placeholder="000000"
-                className="bg-muted/50 border-border text-center text-2xl tracking-[0.5em] font-mono"
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="agent@veridept.gov"
+                className="bg-muted/50 border-border"
+                required
               />
+            </div>
 
-              {error && <p className="text-destructive text-xs">{error}</p>}
-
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? 'Verifying...' : 'Verify & Access System'}
-              </Button>
-
+            <div className="relative">
+              <label className="text-xs text-muted-foreground mb-1 block">Password</label>
+              <Input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="bg-muted/50 border-border pr-10"
+                required
+                minLength={6}
+              />
               <button
                 type="button"
-                onClick={() => setStep('credentials')}
-                className="text-xs text-muted-foreground hover:text-foreground w-full text-center"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-[calc(50%+4px)] text-muted-foreground hover:text-foreground"
               >
-                ← Back to credentials
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
-            </form>
-          )}
+            </div>
+
+            {error && <p className="text-destructive text-xs">{error}</p>}
+            {message && <p className="text-success text-xs">{message}</p>}
+
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? 'Please wait...' : mode === 'signin' ? 'Sign In' : 'Create Account'}
+            </Button>
+
+            <button
+              type="button"
+              onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setError(''); setMessage(''); }}
+              className="text-xs text-muted-foreground hover:text-foreground w-full text-center"
+            >
+              {mode === 'signin' ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
+            </button>
+          </form>
 
           <div className="mt-4 pt-4 border-t border-border">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">

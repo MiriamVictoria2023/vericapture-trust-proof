@@ -1,22 +1,28 @@
 import { Link2, CheckCircle, AlertTriangle } from 'lucide-react';
-import { getChain, verifyChain } from '@/utils/blockchain';
-import type { BlockchainEntry } from '@/types/evidence';
+import { fetchBlockchain } from '@/services/database';
+import { useAuth } from '@/contexts/AuthContext';
+import type { Database } from '@/integrations/supabase/types';
 import { useEffect, useState } from 'react';
 
-/**
- * Digital Notary panel showing the mock blockchain ledger.
- */
-const DigitalNotary = () => {
-  const [chain, setChain] = useState<BlockchainEntry[]>([]);
-  const [valid, setValid] = useState(true);
+type BlockRow = Database['public']['Tables']['blockchain_ledger']['Row'];
+
+interface DigitalNotaryProps {
+  refreshKey?: number;
+}
+
+const DigitalNotary = ({ refreshKey }: DigitalNotaryProps) => {
+  const { user } = useAuth();
+  const [chain, setChain] = useState<BlockRow[]>([]);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setChain(getChain());
-      setValid(verifyChain());
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
+    if (!user) return;
+    fetchBlockchain(user.id).then(setChain);
+  }, [user, refreshKey]);
+
+  const valid = chain.length <= 1 || chain.every((block, i) => {
+    if (i === 0) return true;
+    return block.previous_hash === chain[i - 1].block_hash;
+  });
 
   return (
     <div className="glass-panel rounded-xl overflow-hidden">
@@ -47,13 +53,13 @@ const DigitalNotary = () => {
       ) : (
         <div className="max-h-64 overflow-y-auto divide-y divide-border">
           {chain.map(block => (
-            <div key={block.index} className="p-3 text-xs">
+            <div key={block.id} className="p-3 text-xs">
               <div className="flex items-center justify-between mb-1">
-                <span className="font-mono text-primary font-medium">Block #{block.index}</span>
-                <span className="text-muted-foreground">{new Date(block.timestamp).toLocaleTimeString()}</span>
+                <span className="font-mono text-primary font-medium">Block #{block.block_index}</span>
+                <span className="text-muted-foreground">{new Date(block.created_at).toLocaleTimeString()}</span>
               </div>
-              <p className="font-mono text-muted-foreground truncate">Hash: {block.hash.substring(0, 32)}...</p>
-              <p className="font-mono text-muted-foreground truncate">Prev: {block.previousHash.substring(0, 32)}...</p>
+              <p className="font-mono text-muted-foreground truncate">Hash: {block.block_hash.substring(0, 32)}...</p>
+              <p className="font-mono text-muted-foreground truncate">Prev: {block.previous_hash.substring(0, 32)}...</p>
             </div>
           ))}
         </div>
