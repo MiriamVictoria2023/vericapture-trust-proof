@@ -1,21 +1,20 @@
 import { FileText, CheckCircle, XCircle, AlertTriangle, MapPin, Clock } from 'lucide-react';
-import type { EvidenceRecord } from '@/types/evidence';
+import type { Database } from '@/integrations/supabase/types';
+
+type EvidenceRow = Database['public']['Tables']['evidence_records']['Row'];
 
 interface EvidenceListProps {
-  records: EvidenceRecord[];
-  onSelect: (record: EvidenceRecord) => void;
+  records: EvidenceRow[];
+  onSelect: (record: EvidenceRow) => void;
 }
 
-const statusConfig = {
+const statusConfig: Record<string, { icon: typeof CheckCircle; label: string; className: string }> = {
   cleared: { icon: CheckCircle, label: 'Cleared', className: 'text-success' },
   rejected: { icon: XCircle, label: 'Rejected', className: 'text-destructive' },
   quarantined: { icon: AlertTriangle, label: 'Quarantined', className: 'text-warning' },
   scanning: { icon: Clock, label: 'Scanning', className: 'text-primary' },
 };
 
-/**
- * Displays a list of captured evidence with status indicators.
- */
 const EvidenceList = ({ records, onSelect }: EvidenceListProps) => {
   if (records.length === 0) {
     return (
@@ -34,25 +33,20 @@ const EvidenceList = ({ records, onSelect }: EvidenceListProps) => {
       </div>
       <div className="divide-y divide-border">
         {records.map((record) => {
-          const status = statusConfig[record.status];
+          const status = statusConfig[record.status] || statusConfig.scanning;
           const StatusIcon = status.icon;
           return (
-            <button
-              key={record.id}
-              onClick={() => onSelect(record)}
-              className="w-full flex items-center gap-3 p-4 hover:bg-muted/30 transition-colors text-left"
-            >
+            <button key={record.id} onClick={() => onSelect(record)} className="w-full flex items-center gap-3 p-4 hover:bg-muted/30 transition-colors text-left">
               <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
                 <FileText className="w-5 h-5 text-primary" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">{record.fileName}</p>
+                <p className="text-sm font-medium text-foreground truncate">{record.file_name}</p>
                 <div className="flex items-center gap-3 mt-0.5">
-                  <span className="text-xs text-muted-foreground font-mono">{record.caseId}</span>
-                  {record.geoLocation && (
+                  {record.geo_lat && record.geo_lng && (
                     <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
                       <MapPin className="w-3 h-3" />
-                      {record.geoLocation.lat.toFixed(2)}, {record.geoLocation.lng.toFixed(2)}
+                      {record.geo_lat.toFixed(2)}, {record.geo_lng.toFixed(2)}
                     </span>
                   )}
                 </div>

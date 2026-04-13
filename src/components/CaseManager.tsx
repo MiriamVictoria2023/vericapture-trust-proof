@@ -1,15 +1,16 @@
 import { Briefcase, Plus, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import type { CaseRecord } from '@/types/evidence';
-import { generateCaseId } from '@/utils/crypto';
+import type { Database } from '@/integrations/supabase/types';
 import { useState } from 'react';
 
+type CaseRow = Database['public']['Tables']['cases']['Row'];
+
 interface CaseManagerProps {
-  cases: CaseRecord[];
+  cases: CaseRow[];
   activeCaseId: string;
   onSelectCase: (id: string) => void;
-  onCreateCase: (c: CaseRecord) => void;
+  onCreateCase: (name: string) => void;
 }
 
 const CaseManager = ({ cases, activeCaseId, onSelectCase, onCreateCase }: CaseManagerProps) => {
@@ -18,16 +19,7 @@ const CaseManager = ({ cases, activeCaseId, onSelectCase, onCreateCase }: CaseMa
 
   const handleCreate = () => {
     if (!caseName.trim()) return;
-    const newCase: CaseRecord = {
-      id: generateCaseId(),
-      name: caseName.trim(),
-      createdAt: new Date().toISOString(),
-      status: 'active',
-      evidenceCount: 0,
-      assignedTo: 'Current User',
-      accessExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-    };
-    onCreateCase(newCase);
+    onCreateCase(caseName.trim());
     setCaseName('');
     setCreating(false);
   };
@@ -68,17 +60,20 @@ const CaseManager = ({ cases, activeCaseId, onSelectCase, onCreateCase }: CaseMa
           >
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-foreground">{c.name}</p>
-              <p className="text-xs text-muted-foreground font-mono">{c.id}</p>
+              <p className="text-xs text-muted-foreground font-mono">{c.case_code}</p>
             </div>
             <div className="text-right">
-              <p className="text-xs text-muted-foreground">{c.evidenceCount} items</p>
+              <p className="text-xs text-muted-foreground">{c.evidence_count} items</p>
               <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
                 <Clock className="w-3 h-3" />
-                <span>{new Date(c.accessExpiry).toLocaleDateString()}</span>
+                <span>{new Date(c.access_expiry).toLocaleDateString()}</span>
               </div>
             </div>
           </button>
         ))}
+        {cases.length === 0 && (
+          <p className="p-4 text-sm text-muted-foreground text-center">No cases yet. Create one to begin.</p>
+        )}
       </div>
     </div>
   );
