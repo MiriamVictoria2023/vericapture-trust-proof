@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Shield, LogOut } from 'lucide-react';
+import { Shield, LogOut, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import AuthGate from '@/components/AuthGate';
 import CaptureInterface from '@/components/CaptureInterface';
@@ -9,6 +9,7 @@ import DeviceAttestation from '@/components/DeviceAttestation';
 import DigitalNotary from '@/components/DigitalNotary';
 import CaseManager from '@/components/CaseManager';
 import StatusBar from '@/components/StatusBar';
+import AnalyticsDashboard from '@/components/AnalyticsDashboard';
 import { useAuth } from '@/contexts/AuthContext';
 import { fetchCases, createCase, fetchEvidence } from '@/services/database';
 import type { Database } from '@/integrations/supabase/types';
@@ -23,6 +24,7 @@ const Index = () => {
   const [evidence, setEvidence] = useState<EvidenceRow[]>([]);
   const [selectedEvidence, setSelectedEvidence] = useState<EvidenceRow | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [showAnalytics, setShowAnalytics] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!user) return;
@@ -60,15 +62,23 @@ const Index = () => {
 
   if (!user) return <AuthGate />;
 
-  if (selectedEvidence) {
-    return (
-      <div className="min-h-screen p-4 md:p-6 max-w-5xl mx-auto">
-        <EvidenceDetail record={selectedEvidence} onBack={() => setSelectedEvidence(null)} />
-      </div>
-    );
+  if (showAnalytics) {
+    return <AnalyticsDashboard onBack={() => setShowAnalytics(false)} />;
   }
 
   const activeCase = cases.find(c => c.id === activeCaseId);
+
+  if (selectedEvidence) {
+    return (
+      <div className="min-h-screen p-4 md:p-6 max-w-5xl mx-auto">
+        <EvidenceDetail
+          record={selectedEvidence}
+          caseCode={activeCase?.case_code || 'N/A'}
+          onBack={() => setSelectedEvidence(null)}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen">
@@ -80,7 +90,10 @@ const Index = () => {
             <span className="text-xs text-muted-foreground hidden sm:inline ml-2">Zero-Trust Evidence System</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground hidden sm:inline">{user.email}</span>
+            <Button variant="ghost" size="sm" onClick={() => setShowAnalytics(true)}>
+              <BarChart3 className="w-4 h-4 mr-1" /> Analytics
+            </Button>
+            <span className="text-xs text-muted-foreground hidden sm:inline">{user.email || user.phone}</span>
             <Button variant="ghost" size="sm" onClick={signOut}>
               <LogOut className="w-4 h-4 mr-1" /> Logout
             </Button>

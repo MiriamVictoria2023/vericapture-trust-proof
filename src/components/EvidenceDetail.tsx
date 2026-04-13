@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Hash, MapPin, Clock, Smartphone, Link2, Eye } from 'lucide-react';
+import { ArrowLeft, Hash, MapPin, Clock, Smartphone, Link2, Eye, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { fetchCustodyLog, insertCustodyEntry } from '@/services/database';
 import { useAuth } from '@/contexts/AuthContext';
+import { generateCustodyPDF } from '@/utils/pdfExport';
 import type { Database } from '@/integrations/supabase/types';
 
 type EvidenceRow = Database['public']['Tables']['evidence_records']['Row'];
@@ -10,10 +11,11 @@ type CustodyRow = Database['public']['Tables']['custody_log']['Row'];
 
 interface EvidenceDetailProps {
   record: EvidenceRow;
+  caseCode: string;
   onBack: () => void;
 }
 
-const EvidenceDetail = ({ record, onBack }: EvidenceDetailProps) => {
+const EvidenceDetail = ({ record, caseCode, onBack }: EvidenceDetailProps) => {
   const { user } = useAuth();
   const [custodyLog, setCustodyLog] = useState<CustodyRow[]>([]);
 
@@ -21,8 +23,6 @@ const EvidenceDetail = ({ record, onBack }: EvidenceDetailProps) => {
     const load = async () => {
       const log = await fetchCustodyLog(record.id);
       setCustodyLog(log);
-
-      // Record a "viewed" entry
       if (user) {
         await insertCustodyEntry({
           user_id: user.id,
@@ -32,7 +32,6 @@ const EvidenceDetail = ({ record, onBack }: EvidenceDetailProps) => {
           ip_address: '192.168.1.x',
           details: `Evidence viewed by ${user.email}`,
         });
-        // Refresh log
         const updated = await fetchCustodyLog(record.id);
         setCustodyLog(updated);
       }
@@ -40,11 +39,20 @@ const EvidenceDetail = ({ record, onBack }: EvidenceDetailProps) => {
     load();
   }, [record.id, user]);
 
+  const handleExportPDF = () => {
+    generateCustodyPDF(record, custodyLog, caseCode);
+  };
+
   return (
     <div className="space-y-4 animate-fade-in-up">
-      <Button variant="ghost" onClick={onBack} className="text-muted-foreground">
-        <ArrowLeft className="w-4 h-4 mr-1" /> Back
-      </Button>
+      <div className="flex items-center justify-between">
+        <Button variant="ghost" onClick={onBack} className="text-muted-foreground">
+          <ArrowLeft className="w-4 h-4 mr-1" /> Back
+        </Button>
+        <Button onClick={handleExportPDF} variant="outline" size="sm" className="gap-1.5">
+          <Download className="w-4 h-4" /> Export PDF
+        </Button>
+      </div>
 
       <div className="glass-panel rounded-xl p-5 space-y-4">
         <h2 className="text-lg font-semibold text-foreground">{record.file_name}</h2>
