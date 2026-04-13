@@ -14,7 +14,181 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      blockchain_ledger: {
+        Row: {
+          block_hash: string
+          block_index: number
+          created_at: string
+          evidence_hash: string
+          id: string
+          nonce: number
+          previous_hash: string
+          user_id: string
+        }
+        Insert: {
+          block_hash: string
+          block_index: number
+          created_at?: string
+          evidence_hash: string
+          id?: string
+          nonce: number
+          previous_hash: string
+          user_id: string
+        }
+        Update: {
+          block_hash?: string
+          block_index?: number
+          created_at?: string
+          evidence_hash?: string
+          id?: string
+          nonce?: number
+          previous_hash?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      cases: {
+        Row: {
+          access_expiry: string
+          assigned_to: string
+          case_code: string
+          created_at: string
+          evidence_count: number
+          id: string
+          name: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_expiry?: string
+          assigned_to?: string
+          case_code: string
+          created_at?: string
+          evidence_count?: number
+          id?: string
+          name: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_expiry?: string
+          assigned_to?: string
+          case_code?: string
+          created_at?: string
+          evidence_count?: number
+          id?: string
+          name?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      custody_log: {
+        Row: {
+          action: string
+          actor: string
+          created_at: string
+          details: string | null
+          evidence_id: string
+          id: string
+          ip_address: string
+          user_id: string
+        }
+        Insert: {
+          action: string
+          actor: string
+          created_at?: string
+          details?: string | null
+          evidence_id: string
+          id?: string
+          ip_address?: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          actor?: string
+          created_at?: string
+          details?: string | null
+          evidence_id?: string
+          id?: string
+          ip_address?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "custody_log_evidence_id_fkey"
+            columns: ["evidence_id"]
+            isOneToOne: false
+            referencedRelation: "evidence_records"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      evidence_records: {
+        Row: {
+          block_index: number | null
+          case_id: string
+          created_at: string
+          device_info: string | null
+          file_name: string
+          file_size: number
+          file_type: string
+          geo_lat: number | null
+          geo_lng: number | null
+          id: string
+          notary_hash: string | null
+          sha256_hash: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          block_index?: number | null
+          case_id: string
+          created_at?: string
+          device_info?: string | null
+          file_name: string
+          file_size: number
+          file_type?: string
+          geo_lat?: number | null
+          geo_lng?: number | null
+          id?: string
+          notary_hash?: string | null
+          sha256_hash: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          block_index?: number | null
+          case_id?: string
+          created_at?: string
+          device_info?: string | null
+          file_name?: string
+          file_size?: number
+          file_type?: string
+          geo_lat?: number | null
+          geo_lng?: number | null
+          id?: string
+          notary_hash?: string | null
+          sha256_hash?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evidence_records_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
