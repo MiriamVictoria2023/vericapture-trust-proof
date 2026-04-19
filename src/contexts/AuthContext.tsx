@@ -16,8 +16,6 @@ interface AuthContextType {
   isAdmin: boolean;
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signInWithPhone: (phone: string) => Promise<{ error: Error | null }>;
-  verifyPhoneOtp: (phone: string, token: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   refreshRoles: () => Promise<void>;
 }
@@ -88,15 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error ? new Error(error.message) : null };
   };
 
-  const signInWithPhone = async (phone: string) => {
-    const { error } = await supabase.auth.signInWithOtp({ phone });
-    return { error: error ? new Error(error.message) : null };
-  };
 
-  const verifyPhoneOtp = async (phone: string, token: string) => {
-    const { error } = await supabase.auth.verifyOtp({ phone, token, type: 'sms' });
-    return { error: error ? new Error(error.message) : null };
-  };
 
   const signOut = async () => {
     setSessionPassword(null);
@@ -114,7 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isInvestigator: roles.includes('investigator'),
       isSupervisor: roles.includes('supervisor'),
       isAdmin: roles.includes('admin'),
-      signUp, signIn, signInWithPhone, verifyPhoneOtp, signOut, refreshRoles,
+      signUp, signIn, signOut, refreshRoles,
     }}>
       {children}
     </AuthContext.Provider>
