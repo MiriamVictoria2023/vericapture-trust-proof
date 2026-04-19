@@ -61,6 +61,11 @@ export async function insertEvidence(record: {
   status: string;
   notary_hash: string;
   block_index: number;
+  encrypted_path?: string | null;
+  encryption_iv?: string | null;
+  encryption_salt?: string | null;
+  encryption_algo?: string | null;
+  device_id?: string | null;
 }) {
   const { data, error } = await supabase
     .from('evidence_records')
@@ -69,6 +74,33 @@ export async function insertEvidence(record: {
     .single();
   if (error) throw error;
   return data;
+}
+
+export async function findEvidenceByName(userId: string, caseId: string, fileName: string) {
+  const { data, error } = await supabase
+    .from('evidence_records')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('case_id', caseId)
+    .eq('file_name', fileName)
+    .order('created_at', { ascending: false })
+    .limit(1);
+  if (error) throw error;
+  return data?.[0] ?? null;
+}
+
+export async function updateEvidenceTamperStatus(
+  evidenceId: string,
+  status: 'intact' | 'tampered'
+) {
+  const { error } = await supabase
+    .from('evidence_records')
+    .update({
+      tamper_status: status,
+      tamper_verified_at: new Date().toISOString(),
+    })
+    .eq('id', evidenceId);
+  if (error) throw error;
 }
 
 // ─── Custody Log ─────────────────────────────────────────────

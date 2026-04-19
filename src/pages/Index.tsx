@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Shield, LogOut, BarChart3 } from 'lucide-react';
+import { Shield, LogOut, BarChart3, ScrollText, UserCog } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import AuthGate from '@/components/AuthGate';
 import CaptureInterface from '@/components/CaptureInterface';
@@ -10,6 +10,9 @@ import DigitalNotary from '@/components/DigitalNotary';
 import CaseManager from '@/components/CaseManager';
 import StatusBar from '@/components/StatusBar';
 import AnalyticsDashboard from '@/components/AnalyticsDashboard';
+import AuditLogsDashboard from '@/components/AuditLogsDashboard';
+import AdminPanel from '@/components/AdminPanel';
+import ZeroTrustPanel from '@/components/ZeroTrustPanel';
 import { useAuth } from '@/contexts/AuthContext';
 import { fetchCases, createCase, fetchEvidence } from '@/services/database';
 import type { Database } from '@/integrations/supabase/types';
@@ -17,14 +20,16 @@ import type { Database } from '@/integrations/supabase/types';
 type CaseRow = Database['public']['Tables']['cases']['Row'];
 type EvidenceRow = Database['public']['Tables']['evidence_records']['Row'];
 
+type View = 'main' | 'analytics' | 'audit' | 'admin';
+
 const Index = () => {
-  const { user, loading, signOut } = useAuth();
+  const { user, loading, signOut, roles, isAdmin } = useAuth();
   const [cases, setCases] = useState<CaseRow[]>([]);
   const [activeCaseId, setActiveCaseId] = useState<string | null>(null);
   const [evidence, setEvidence] = useState<EvidenceRow[]>([]);
   const [selectedEvidence, setSelectedEvidence] = useState<EvidenceRow | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [showAnalytics, setShowAnalytics] = useState(false);
+  const [view, setView] = useState<View>('main');
 
   const refresh = useCallback(async () => {
     if (!user) return;
@@ -62,9 +67,9 @@ const Index = () => {
 
   if (!user) return <AuthGate />;
 
-  if (showAnalytics) {
-    return <AnalyticsDashboard onBack={() => setShowAnalytics(false)} />;
-  }
+  if (view === 'analytics') return <AnalyticsDashboard onBack={() => setView('main')} />;
+  if (view === 'audit') return <AuditLogsDashboard onBack={() => setView('main')} />;
+  if (view === 'admin') return <AdminPanel onBack={() => setView('main')} />;
 
   const activeCase = cases.find(c => c.id === activeCaseId);
 
@@ -89,11 +94,28 @@ const Index = () => {
             <span className="font-bold text-foreground text-lg">VeriCapture</span>
             <span className="text-xs text-muted-foreground hidden sm:inline ml-2">Zero-Trust Evidence System</span>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={() => setShowAnalytics(true)}>
+          <div className="flex items-center gap-1.5 flex-wrap justify-end">
+            <Button variant="ghost" size="sm" onClick={() => setView('analytics')}>
               <BarChart3 className="w-4 h-4 mr-1" /> Analytics
             </Button>
-            <span className="text-xs text-muted-foreground hidden sm:inline">{user.email || user.phone}</span>
+            {isAdmin && (
+              <>
+                <Button variant="ghost" size="sm" onClick={() => setView('audit')}>
+                  <ScrollText className="w-4 h-4 mr-1" /> Audit
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setView('admin')}>
+                  <UserCog className="w-4 h-4 mr-1" /> Roles
+                </Button>
+              </>
+            )}
+            <div className="hidden sm:flex items-center gap-1.5 ml-1">
+              {roles.map((r) => (
+                <span key={r} className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary capitalize font-medium">
+                  {r}
+                </span>
+              ))}
+            </div>
+            <span className="text-xs text-muted-foreground hidden md:inline">{user.email || user.phone}</span>
             <Button variant="ghost" size="sm" onClick={signOut}>
               <LogOut className="w-4 h-4 mr-1" /> Logout
             </Button>
@@ -122,6 +144,7 @@ const Index = () => {
           </div>
 
           <div className="space-y-6">
+            <ZeroTrustPanel />
             <CaseManager
               cases={cases}
               activeCaseId={activeCaseId || ''}

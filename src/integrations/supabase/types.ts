@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_logs: {
+        Row: {
+          action: string
+          actor_email: string | null
+          created_at: string
+          details: Json | null
+          device_id: string | null
+          id: string
+          ip_address: string | null
+          resource_id: string | null
+          resource_type: string | null
+          suspicious: boolean
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          created_at?: string
+          details?: Json | null
+          device_id?: string | null
+          id?: string
+          ip_address?: string | null
+          resource_id?: string | null
+          resource_type?: string | null
+          suspicious?: boolean
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          created_at?: string
+          details?: Json | null
+          device_id?: string | null
+          id?: string
+          ip_address?: string | null
+          resource_id?: string | null
+          resource_type?: string | null
+          suspicious?: boolean
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       blockchain_ledger: {
         Row: {
           block_hash: string
@@ -127,12 +172,59 @@ export type Database = {
           },
         ]
       }
+      device_fingerprints: {
+        Row: {
+          browser: string | null
+          device_id: string
+          first_seen_at: string
+          id: string
+          language: string | null
+          last_seen_at: string
+          os: string | null
+          screen_resolution: string | null
+          timezone: string | null
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          browser?: string | null
+          device_id: string
+          first_seen_at?: string
+          id?: string
+          language?: string | null
+          last_seen_at?: string
+          os?: string | null
+          screen_resolution?: string | null
+          timezone?: string | null
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          browser?: string | null
+          device_id?: string
+          first_seen_at?: string
+          id?: string
+          language?: string | null
+          last_seen_at?: string
+          os?: string | null
+          screen_resolution?: string | null
+          timezone?: string | null
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       evidence_records: {
         Row: {
           block_index: number | null
           case_id: string
           created_at: string
+          device_id: string | null
           device_info: string | null
+          encrypted_path: string | null
+          encryption_algo: string | null
+          encryption_iv: string | null
+          encryption_salt: string | null
           file_name: string
           file_size: number
           file_type: string
@@ -142,6 +234,8 @@ export type Database = {
           notary_hash: string | null
           sha256_hash: string
           status: string
+          tamper_status: string | null
+          tamper_verified_at: string | null
           updated_at: string
           user_id: string
         }
@@ -149,7 +243,12 @@ export type Database = {
           block_index?: number | null
           case_id: string
           created_at?: string
+          device_id?: string | null
           device_info?: string | null
+          encrypted_path?: string | null
+          encryption_algo?: string | null
+          encryption_iv?: string | null
+          encryption_salt?: string | null
           file_name: string
           file_size: number
           file_type?: string
@@ -159,6 +258,8 @@ export type Database = {
           notary_hash?: string | null
           sha256_hash: string
           status?: string
+          tamper_status?: string | null
+          tamper_verified_at?: string | null
           updated_at?: string
           user_id: string
         }
@@ -166,7 +267,12 @@ export type Database = {
           block_index?: number | null
           case_id?: string
           created_at?: string
+          device_id?: string | null
           device_info?: string | null
+          encrypted_path?: string | null
+          encryption_algo?: string | null
+          encryption_iv?: string | null
+          encryption_salt?: string | null
           file_name?: string
           file_size?: number
           file_type?: string
@@ -176,6 +282,8 @@ export type Database = {
           notary_hash?: string | null
           sha256_hash?: string
           status?: string
+          tamper_status?: string | null
+          tamper_verified_at?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -189,15 +297,45 @@ export type Database = {
           },
         ]
       }
+      user_roles: {
+        Row: {
+          assigned_by: string | null
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          assigned_by?: string | null
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          assigned_by?: string | null
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "investigator" | "supervisor" | "admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -324,6 +462,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["investigator", "supervisor", "admin"],
+    },
   },
 } as const
