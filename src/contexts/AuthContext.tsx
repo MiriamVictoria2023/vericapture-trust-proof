@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { lovable } from '@/integrations/lovable';
 import type { User, Session } from '@supabase/supabase-js';
 import { fetchUserRoles, type AppRole } from '@/services/roles';
 import { upsertDeviceFingerprint } from '@/services/audit';
@@ -15,7 +16,13 @@ interface AuthContextType {
   isSupervisor: boolean;
   isAdmin: boolean;
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  /** Step 1 of 2FA: verify password, then immediately sign out and trigger OTP. */
+  signInStep1: (email: string, password: string) => Promise<{ error: Error | null }>;
+  /** Step 2 of 2FA: verify the email OTP and finalize the session. */
+  verifyLoginOtp: (email: string, token: string) => Promise<{ error: Error | null }>;
+  signInWithGoogle: () => Promise<{ error: Error | null }>;
+  resetPassword: (email: string) => Promise<{ error: Error | null }>;
+  updatePassword: (newPassword: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   refreshRoles: () => Promise<void>;
 }
@@ -46,7 +53,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(session?.user ?? null);
       setLoading(false);
       if (session?.user) {
-        // defer non-critical work
         setTimeout(() => {
           loadRoles(session.user.id);
           upsertDeviceFingerprint(session.user.id);
@@ -80,13 +86,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error ? new Error(error.message) : null };
   };
 
-  const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (!error) setSessionPassword(password);
+  /**
+   * Step 1: validate the password by signing in, then immediately sign out
+   * and request an email OTP. The OTP step finalizes the session.
+   * The password is cached in memory so the AES encryption key derivation
+   * still works once 2FA completes.
+   */
+  const signInStep1 = async (email: string, password: string) => {
+    const { error: pwError } = await supabase.auth.signInWithPassword({ email, password });
+    if (pwError) return { error: new Error(pwError.message) };
+
+    // Cache password in memory for AES key derivation after OTP completes
+    setSessionPassword(password);
+
+    // Tear down session so OTP becomes the actual session-establishing event
+    await supabase.auth.signOut();
+
+    const { error: otpError } = await supabase.auth.signInWithOtp({
+      email,
+      options: { shouldCreateUser: false },
+    });
+    if (otpError) {
+      setSessionPassword(null);
+      return { error: new Error(otpError.message) };
+    }
+    return { error: null };
+  };
+
+  const verifyLoginOtp = async (email: string, token: string) => {
+    const { error } = await supabase.auth.verifyOtp({ email, token, type: 'email' });
     return { error: error ? new Error(error.message) : null };
   };
 
+  const signInWithGoogle = async () => {
+    const result = await lovable.auth.signInWithOAuth('google', {
+      redirect_uri: window.location.origin,
+    });
+    if (result.error) return { error: result.error instanceof Error ? result.error : new Error(String(result.error)) };
+    return { error: null };
+  };
 
+  const resetPassword = async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    return { error: error ? new Error(error.message) : null };
+  };
+
+  const updatePassword = async (newPassword: string) => {
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (!error) setSessionPassword(newPassword);
+    return { error: error ? new Error(error.message) : null };
+  };
 
   const signOut = async () => {
     setSessionPassword(null);
@@ -104,7 +155,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isInvestigator: roles.includes('investigator'),
       isSupervisor: roles.includes('supervisor'),
       isAdmin: roles.includes('admin'),
-      signUp, signIn, signOut, refreshRoles,
+      signUp, signInStep1, verifyLoginOtp, signInWithGoogle,
+      resetPassword, updatePassword, signOut, refreshRoles,
     }}>
       {children}
     </AuthContext.Provider>
