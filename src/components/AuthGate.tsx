@@ -1,37 +1,76 @@
 import { useState } from 'react';
-import { Shield, Lock, Eye, EyeOff } from 'lucide-react';
+import { Shield, Lock, Eye, EyeOff, Mail, KeyRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
+import googleLogo from '@/assets/google-logo.png';
+
+type Step = 'credentials' | 'otp' | 'forgot';
 
 /**
- * Authentication gate with email/password sign-in and sign-up.
+ * Authentication gate: email/password with email OTP 2FA, Google sign-in,
+ * and password reset.
  */
 const AuthGate = () => {
-  const { signIn, signUp } = useAuth();
+  const { signUp, signInStep1, verifyLoginOtp, signInWithGoogle, resetPassword } = useAuth();
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+  const [step, setStep] = useState<Step>('credentials');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [otp, setOtp] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const resetState = () => { setError(''); setMessage(''); };
+
+  const handleCredentialsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
-    setMessage('');
+    resetState();
     if (mode === 'signup') {
       const { error } = await signUp(email, password);
       if (error) setError(error.message);
-      else setMessage('Check your email to confirm your account.');
+      else setMessage('Check your email to confirm your account, then sign in.');
     } else {
-      const { error } = await signIn(email, password);
+      const { error } = await signInStep1(email, password);
       if (error) setError(error.message);
+      else {
+        setStep('otp');
+        setMessage(`We sent a 6-digit code to ${email}.`);
+      }
     }
     setLoading(false);
   };
+
+  const handleOtpSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    resetState();
+    const { error } = await verifyLoginOtp(email, otp);
+    if (error) setError(error.message);
+    setLoading(false);
+  };
+
+  const handleGoogle = async () => {
+    setLoading(true);
+    resetState();
+    const { error } = await signInWithGoogle();
+    if (error) { setError(error.message); setLoading(false); }
+  };
+
+  const handleForgotSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    resetState();
+    const { error } = await resetPassword(email);
+    if (error) setError(error.message);
+    else setMessage('Password reset link sent. Check your inbox.');
+    setLoading(false);
+  };
+
+  const goBack = () => { setStep('credentials'); setOtp(''); resetState(); };
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
@@ -45,55 +84,156 @@ const AuthGate = () => {
         </div>
 
         <div className="glass-panel rounded-xl p-6">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Lock className="w-4 h-4 text-primary" />
-              <span className="text-sm font-medium text-foreground">
-                {mode === 'signin' ? 'Sign In' : 'Create Account'}
-              </span>
-            </div>
+          {/* CREDENTIALS STEP */}
+          {step === 'credentials' && (
+            <>
+              <form onSubmit={handleCredentialsSubmit} className="space-y-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Lock className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-medium text-foreground">
+                    {mode === 'signin' ? 'Sign In' : 'Create Account'}
+                  </span>
+                </div>
 
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Email Address</label>
-              <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="agent@veridept.gov" className="bg-muted/50 border-border" required />
-            </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Email Address</label>
+                  <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="agent@veridept.gov" className="bg-muted/50 border-border" required autoComplete="email" />
+                </div>
 
-            <div className="relative">
-              <label className="text-xs text-muted-foreground mb-1 block">Password</label>
-              <Input
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="bg-muted/50 border-border pr-10"
-                required
-                minLength={6}
-              />
-              <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-[calc(50%+4px)] text-muted-foreground hover:text-foreground">
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                <div className="relative">
+                  <label className="text-xs text-muted-foreground mb-1 block">Password</label>
+                  <Input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="bg-muted/50 border-border pr-10"
+                    required
+                    minLength={6}
+                    autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
+                  />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-[calc(50%+4px)] text-muted-foreground hover:text-foreground">
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+
+                {error && <p className="text-destructive text-xs">{error}</p>}
+                {message && <p className="text-success text-xs">{message}</p>}
+
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? 'Please wait...' : mode === 'signin' ? 'Continue with Password' : 'Create Account'}
+                </Button>
+
+                {mode === 'signin' && (
+                  <button
+                    type="button"
+                    onClick={() => { setStep('forgot'); resetState(); }}
+                    className="text-xs text-muted-foreground hover:text-primary w-full text-center"
+                  >
+                    Forgot password?
+                  </button>
+                )}
+              </form>
+
+              {/* Divider */}
+              <div className="flex items-center gap-3 my-5">
+                <div className="flex-1 h-px bg-border" />
+                <span className="text-xs text-muted-foreground">OR</span>
+                <div className="flex-1 h-px bg-border" />
+              </div>
+
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full bg-muted/30"
+                onClick={handleGoogle}
+                disabled={loading}
+              >
+                <img src={googleLogo} alt="" className="w-4 h-4 mr-2" />
+                Continue with Google
+              </Button>
+
+              <button
+                type="button"
+                onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); resetState(); }}
+                className="text-xs text-muted-foreground hover:text-foreground w-full text-center mt-4"
+              >
+                {mode === 'signin' ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
               </button>
-            </div>
+            </>
+          )}
 
-            {error && <p className="text-destructive text-xs">{error}</p>}
-            {message && <p className="text-success text-xs">{message}</p>}
+          {/* OTP STEP */}
+          {step === 'otp' && (
+            <form onSubmit={handleOtpSubmit} className="space-y-4">
+              <div className="flex items-center gap-2 mb-2">
+                <KeyRound className="w-4 h-4 text-primary" />
+                <span className="text-sm font-medium text-foreground">Two-Factor Verification</span>
+              </div>
 
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Please wait...' : mode === 'signin' ? 'Sign In' : 'Create Account'}
-            </Button>
+              <p className="text-xs text-muted-foreground">
+                Enter the 6-digit code sent to <span className="text-foreground font-mono">{email}</span>
+              </p>
 
-            <button
-              type="button"
-              onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setError(''); setMessage(''); }}
-              className="text-xs text-muted-foreground hover:text-foreground w-full text-center"
-            >
-              {mode === 'signin' ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
-            </button>
-          </form>
+              <Input
+                type="text"
+                inputMode="numeric"
+                maxLength={6}
+                value={otp}
+                onChange={e => setOtp(e.target.value.replace(/\D/g, ''))}
+                placeholder="000000"
+                className="bg-muted/50 border-border text-center text-2xl tracking-[0.5em] font-mono"
+                required
+                autoFocus
+              />
+
+              {error && <p className="text-destructive text-xs">{error}</p>}
+              {message && <p className="text-success text-xs">{message}</p>}
+
+              <Button type="submit" className="w-full" disabled={loading || otp.length !== 6}>
+                {loading ? 'Verifying...' : 'Verify & Sign In'}
+              </Button>
+
+              <button type="button" onClick={goBack} className="text-xs text-muted-foreground hover:text-foreground w-full text-center">
+                ← Back to sign in
+              </button>
+            </form>
+          )}
+
+          {/* FORGOT PASSWORD STEP */}
+          {step === 'forgot' && (
+            <form onSubmit={handleForgotSubmit} className="space-y-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Mail className="w-4 h-4 text-primary" />
+                <span className="text-sm font-medium text-foreground">Reset Password</span>
+              </div>
+
+              <p className="text-xs text-muted-foreground">
+                Enter your email and we'll send you a reset link.
+              </p>
+
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Email Address</label>
+                <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="agent@veridept.gov" className="bg-muted/50 border-border" required />
+              </div>
+
+              {error && <p className="text-destructive text-xs">{error}</p>}
+              {message && <p className="text-success text-xs">{message}</p>}
+
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? 'Sending...' : 'Send Reset Link'}
+              </Button>
+
+              <button type="button" onClick={goBack} className="text-xs text-muted-foreground hover:text-foreground w-full text-center">
+                ← Back to sign in
+              </button>
+            </form>
+          )}
 
           <div className="mt-4 pt-4 border-t border-border">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
-              <span>TLS 1.3 Encrypted • AES-256 at Rest</span>
+              <span>TLS 1.3 Encrypted • AES-256 at Rest • 2FA Enabled</span>
             </div>
           </div>
         </div>
