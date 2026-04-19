@@ -16,8 +16,8 @@ interface AuthContextType {
   isAdmin: boolean;
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signInWithPhone: (phone: string) => Promise<{ error: Error | null }>;
-  verifyPhoneOtp: (phone: string, token: string) => Promise<{ error: Error | null }>;
+  signInWithEmailOtp: (email: string) => Promise<{ error: Error | null }>;
+  verifyEmailOtp: (email: string, token: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   refreshRoles: () => Promise<void>;
 }
