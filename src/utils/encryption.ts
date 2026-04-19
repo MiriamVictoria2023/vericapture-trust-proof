@@ -54,7 +54,7 @@ export async function encryptFile(file: File, password: string): Promise<Encrypt
   const iv = crypto.getRandomValues(new Uint8Array(IV_LEN));
   const key = await deriveKey(password, salt);
   const plaintext = await file.arrayBuffer();
-  const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, plaintext);
+  const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv as BufferSource }, key, plaintext);
 
   // Pack [IV][ciphertext]
   const packed = new Uint8Array(IV_LEN + ciphertext.byteLength);
