@@ -1,0 +1,1 @@
+ALTER TABLE public.custody_log DROP CONSTRAINT IF EXISTS custody_log_action_check;
