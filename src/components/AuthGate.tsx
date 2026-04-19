@@ -3,7 +3,7 @@ import { Shield, Lock, Eye, EyeOff, Mail, KeyRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
-import googleLogo from '@/assets/google-logo.svg';
+import googleLogo from '@/assets/google-logo.png';
 
 type Step = 'credentials' | 'otp' | 'forgot';
 
