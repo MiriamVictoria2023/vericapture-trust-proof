@@ -26,7 +26,7 @@ export async function logAudit(entry: AuditEntry) {
     if ((count ?? 0) >= 20) suspicious = true;
   }
 
-  const { error } = await supabase.from('audit_logs').insert({
+  const { error } = await supabase.from('audit_logs').insert([{
     user_id: entry.user_id,
     actor_email: entry.actor_email,
     action: entry.action,
@@ -35,9 +35,9 @@ export async function logAudit(entry: AuditEntry) {
     ip_address: ip,
     device_id: fp.deviceId,
     user_agent: fp.userAgent,
-    details: entry.details ?? {},
+    details: (entry.details ?? {}) as never,
     suspicious,
-  });
+  }]);
   if (error) console.error('Audit log error', error);
 }
 

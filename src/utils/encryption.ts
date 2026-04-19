@@ -80,6 +80,6 @@ export async function decryptFile(
   const ciphertext = packed.slice(IV_LEN);
   const salt = b64ToBuf(saltB64);
   const key = await deriveKey(password, salt);
-  const plaintext = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertext);
+  const plaintext = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv as BufferSource }, key, ciphertext as BufferSource);
   return new Blob([plaintext], { type: originalType || 'application/octet-stream' });
 }
