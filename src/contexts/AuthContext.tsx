@@ -16,8 +16,8 @@ interface AuthContextType {
   isAdmin: boolean;
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signInWithEmailOtp: (email: string) => Promise<{ error: Error | null }>;
-  verifyEmailOtp: (email: string, token: string) => Promise<{ error: Error | null }>;
+  signInWithPhone: (phone: string) => Promise<{ error: Error | null }>;
+  verifyPhoneOtp: (phone: string, token: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   refreshRoles: () => Promise<void>;
 }
@@ -88,16 +88,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error ? new Error(error.message) : null };
   };
 
-  const signInWithEmailOtp = async (email: string) => {
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { shouldCreateUser: true, emailRedirectTo: window.location.origin },
-    });
+  const signInWithPhone = async (phone: string) => {
+    const { error } = await supabase.auth.signInWithOtp({ phone });
     return { error: error ? new Error(error.message) : null };
   };
 
-  const verifyEmailOtp = async (email: string, token: string) => {
-    const { error } = await supabase.auth.verifyOtp({ email, token, type: 'email' });
+  const verifyPhoneOtp = async (phone: string, token: string) => {
+    const { error } = await supabase.auth.verifyOtp({ phone, token, type: 'sms' });
     return { error: error ? new Error(error.message) : null };
   };
 
@@ -117,7 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isInvestigator: roles.includes('investigator'),
       isSupervisor: roles.includes('supervisor'),
       isAdmin: roles.includes('admin'),
-      signUp, signIn, signInWithEmailOtp, verifyEmailOtp, signOut, refreshRoles,
+      signUp, signIn, signInWithPhone, verifyPhoneOtp, signOut, refreshRoles,
     }}>
       {children}
     </AuthContext.Provider>
