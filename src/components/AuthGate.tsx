@@ -184,7 +184,7 @@ const AuthGate = () => {
           <div className="mt-4 pt-4 border-t border-border">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
-              <span>TLS 1.3 Encrypted • AES-256 at Rest • 2FA Enabled</span>
+              <span>TLS 1.3 Encrypted • AES-256 at Rest</span>
             </div>
           </div>
         </div>
