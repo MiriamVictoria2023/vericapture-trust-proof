@@ -149,42 +149,7 @@ const AuthGate = () => {
             </>
           )}
 
-          {/* OTP STEP */}
-          {step === 'otp' && (
-            <form onSubmit={handleOtpSubmit} className="space-y-4">
-              <div className="flex items-center gap-2 mb-2">
-                <KeyRound className="w-4 h-4 text-primary" />
-                <span className="text-sm font-medium text-foreground">Two-Factor Verification</span>
-              </div>
 
-              <p className="text-xs text-muted-foreground">
-                Enter the 6-digit code sent to <span className="text-foreground font-mono">{email}</span>
-              </p>
-
-              <Input
-                type="text"
-                inputMode="numeric"
-                maxLength={6}
-                value={otp}
-                onChange={e => setOtp(e.target.value.replace(/\D/g, ''))}
-                placeholder="000000"
-                className="bg-muted/50 border-border text-center text-2xl tracking-[0.5em] font-mono"
-                required
-                autoFocus
-              />
-
-              {error && <p className="text-destructive text-xs">{error}</p>}
-              {message && <p className="text-success text-xs">{message}</p>}
-
-              <Button type="submit" className="w-full" disabled={loading || otp.length !== 6}>
-                {loading ? 'Verifying...' : 'Verify & Sign In'}
-              </Button>
-
-              <button type="button" onClick={goBack} className="text-xs text-muted-foreground hover:text-foreground w-full text-center">
-                ← Back to sign in
-              </button>
-            </form>
-          )}
 
           {/* FORGOT PASSWORD STEP */}
           {step === 'forgot' && (
