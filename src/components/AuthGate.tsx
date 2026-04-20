@@ -1,23 +1,22 @@
 import { useState } from 'react';
-import { Shield, Lock, Eye, EyeOff, Mail, KeyRound } from 'lucide-react';
+import { Shield, Lock, Eye, EyeOff, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
 import googleLogo from '@/assets/google-logo.png';
 
-type Step = 'credentials' | 'otp' | 'forgot';
+type Step = 'credentials' | 'forgot';
 
 /**
  * Authentication gate: email/password with email OTP 2FA, Google sign-in,
  * and password reset.
  */
 const AuthGate = () => {
-  const { signUp, signInStep1, verifyLoginOtp, signInWithGoogle, resetPassword } = useAuth();
+  const { signUp, signIn, signInWithGoogle, resetPassword } = useAuth();
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [step, setStep] = useState<Step>('credentials');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [otp, setOtp] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -34,22 +33,9 @@ const AuthGate = () => {
       if (error) setError(error.message);
       else setMessage('Check your email to confirm your account, then sign in.');
     } else {
-      const { error } = await signInStep1(email, password);
+      const { error } = await signIn(email, password);
       if (error) setError(error.message);
-      else {
-        setStep('otp');
-        setMessage(`We sent a 6-digit code to ${email}.`);
-      }
     }
-    setLoading(false);
-  };
-
-  const handleOtpSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    resetState();
-    const { error } = await verifyLoginOtp(email, otp);
-    if (error) setError(error.message);
     setLoading(false);
   };
 
@@ -70,7 +56,7 @@ const AuthGate = () => {
     setLoading(false);
   };
 
-  const goBack = () => { setStep('credentials'); setOtp(''); resetState(); };
+  const goBack = () => { setStep('credentials'); resetState(); };
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
