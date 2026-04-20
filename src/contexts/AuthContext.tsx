@@ -83,36 +83,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error ? new Error(error.message) : null };
   };
 
-  /**
-   * Step 1: validate the password by signing in, then immediately sign out
-   * and request an email OTP. The OTP step finalizes the session.
-   * The password is cached in memory so the AES encryption key derivation
-   * still works once 2FA completes.
-   */
-  const signInStep1 = async (email: string, password: string) => {
-    const { error: pwError } = await supabase.auth.signInWithPassword({ email, password });
-    if (pwError) return { error: new Error(pwError.message) };
-
-    // Cache password in memory for AES key derivation after OTP completes
+  const signIn = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return { error: new Error(error.message) };
     setSessionPassword(password);
-
-    // Tear down session so OTP becomes the actual session-establishing event
-    await supabase.auth.signOut();
-
-    const { error: otpError } = await supabase.auth.signInWithOtp({
-      email,
-      options: { shouldCreateUser: false },
-    });
-    if (otpError) {
-      setSessionPassword(null);
-      return { error: new Error(otpError.message) };
-    }
     return { error: null };
-  };
-
-  const verifyLoginOtp = async (email: string, token: string) => {
-    const { error } = await supabase.auth.verifyOtp({ email, token, type: 'email' });
-    return { error: error ? new Error(error.message) : null };
   };
 
   const signInWithGoogle = async () => {
@@ -152,7 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isInvestigator: roles.includes('investigator'),
       isSupervisor: roles.includes('supervisor'),
       isAdmin: roles.includes('admin'),
-      signUp, signInStep1, verifyLoginOtp, signInWithGoogle,
+      signUp, signIn, signInWithGoogle,
       resetPassword, updatePassword, signOut, refreshRoles,
     }}>
       {children}
