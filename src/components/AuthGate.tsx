@@ -1,23 +1,22 @@
 import { useState } from 'react';
-import { Shield, Lock, Eye, EyeOff, Mail, KeyRound } from 'lucide-react';
+import { Shield, Lock, Eye, EyeOff, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
 import googleLogo from '@/assets/google-logo.png';
 
-type Step = 'credentials' | 'otp' | 'forgot';
+type Step = 'credentials' | 'forgot';
 
 /**
  * Authentication gate: email/password with email OTP 2FA, Google sign-in,
  * and password reset.
  */
 const AuthGate = () => {
-  const { signUp, signInStep1, verifyLoginOtp, signInWithGoogle, resetPassword } = useAuth();
+  const { signUp, signIn, signInWithGoogle, resetPassword } = useAuth();
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [step, setStep] = useState<Step>('credentials');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [otp, setOtp] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -34,22 +33,9 @@ const AuthGate = () => {
       if (error) setError(error.message);
       else setMessage('Check your email to confirm your account, then sign in.');
     } else {
-      const { error } = await signInStep1(email, password);
+      const { error } = await signIn(email, password);
       if (error) setError(error.message);
-      else {
-        setStep('otp');
-        setMessage(`We sent a 6-digit code to ${email}.`);
-      }
     }
-    setLoading(false);
-  };
-
-  const handleOtpSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    resetState();
-    const { error } = await verifyLoginOtp(email, otp);
-    if (error) setError(error.message);
     setLoading(false);
   };
 
@@ -70,7 +56,7 @@ const AuthGate = () => {
     setLoading(false);
   };
 
-  const goBack = () => { setStep('credentials'); setOtp(''); resetState(); };
+  const goBack = () => { setStep('credentials'); resetState(); };
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
@@ -163,42 +149,7 @@ const AuthGate = () => {
             </>
           )}
 
-          {/* OTP STEP */}
-          {step === 'otp' && (
-            <form onSubmit={handleOtpSubmit} className="space-y-4">
-              <div className="flex items-center gap-2 mb-2">
-                <KeyRound className="w-4 h-4 text-primary" />
-                <span className="text-sm font-medium text-foreground">Two-Factor Verification</span>
-              </div>
 
-              <p className="text-xs text-muted-foreground">
-                Enter the 6-digit code sent to <span className="text-foreground font-mono">{email}</span>
-              </p>
-
-              <Input
-                type="text"
-                inputMode="numeric"
-                maxLength={6}
-                value={otp}
-                onChange={e => setOtp(e.target.value.replace(/\D/g, ''))}
-                placeholder="000000"
-                className="bg-muted/50 border-border text-center text-2xl tracking-[0.5em] font-mono"
-                required
-                autoFocus
-              />
-
-              {error && <p className="text-destructive text-xs">{error}</p>}
-              {message && <p className="text-success text-xs">{message}</p>}
-
-              <Button type="submit" className="w-full" disabled={loading || otp.length !== 6}>
-                {loading ? 'Verifying...' : 'Verify & Sign In'}
-              </Button>
-
-              <button type="button" onClick={goBack} className="text-xs text-muted-foreground hover:text-foreground w-full text-center">
-                ← Back to sign in
-              </button>
-            </form>
-          )}
 
           {/* FORGOT PASSWORD STEP */}
           {step === 'forgot' && (
@@ -233,7 +184,7 @@ const AuthGate = () => {
           <div className="mt-4 pt-4 border-t border-border">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
-              <span>TLS 1.3 Encrypted • AES-256 at Rest • 2FA Enabled</span>
+              <span>TLS 1.3 Encrypted • AES-256 at Rest</span>
             </div>
           </div>
         </div>
