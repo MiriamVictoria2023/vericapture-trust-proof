@@ -16,10 +16,7 @@ interface AuthContextType {
   isSupervisor: boolean;
   isAdmin: boolean;
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
-  /** Step 1 of 2FA: verify password, then immediately sign out and trigger OTP. */
-  signInStep1: (email: string, password: string) => Promise<{ error: Error | null }>;
-  /** Step 2 of 2FA: verify the email OTP and finalize the session. */
-  verifyLoginOtp: (email: string, token: string) => Promise<{ error: Error | null }>;
+  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signInWithGoogle: () => Promise<{ error: Error | null }>;
   resetPassword: (email: string) => Promise<{ error: Error | null }>;
   updatePassword: (newPassword: string) => Promise<{ error: Error | null }>;
